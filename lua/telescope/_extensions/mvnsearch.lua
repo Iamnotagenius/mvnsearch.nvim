@@ -11,6 +11,7 @@ local xml2lua = require("xml2lua")
 local xml_handler = require("xmlhandler.tree")
 
 local config = require("telescope._extensions.mvnsearch.config")
+local mvnsearch_actions = require("telescope._extensions.mvnsearch.actions")
 
 local api_endpoint = "https://search.maven.org/solrsearch/select"
 
@@ -43,6 +44,7 @@ end
 
 local function mvnsearch(opts)
     for key, value in pairs(config) do
+        print(key, value)
         if not opts[key] then
             opts[key] = value
         end
@@ -84,7 +86,7 @@ local function mvnsearch(opts)
         attach_mappings = function(prompt_bufnr)
             actions.select_default:replace(function()
                 actions.close(prompt_bufnr)
-                opts.action(prompt_bufnr)
+                opts.default_action(prompt_bufnr)
             end)
             return true
         end
@@ -101,8 +103,23 @@ vim.api.nvim_create_user_command("MvnSearch", function(context)
     }
 end, { nargs = 1 })
 
+
 return telescope.register_extension {
-    setup = config.setup,
+    setup = function(opts)
+        config.setup {
+            default_action = mvnsearch_actions.insert_to_build_script,
+            mappings = {
+                n = {
+                    y = mvnsearch_actions.yank,
+                    i = mvnsearch_actions.insert_to_build_script
+                },
+                i = {
+                    ["<M-i>"] = mvnsearch_actions.insert_to_build_script,
+                }
+            }
+        }
+        config.setup(opts)
+    end,
     exports = {
         mvnsearch = mvnsearch
     }

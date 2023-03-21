@@ -3,7 +3,7 @@ local transform_mod = require("telescope.actions.mt").transform_mod
 
 local util = require("telescope._extensions.mvnsearch.util")
 local inserters = require("telescope._extensions.mvnsearch.inserters")
-local opts = require("telescope._extensions.mvnsearch.config").opts
+local opts = require("telescope._extensions.mvnsearch.config")
 
 local M = {}
 
