@@ -5,12 +5,16 @@ local default_opts = {
     yank_register = 'd',
     preferred_build_system = require("telescope._extensions.mvnsearch.inserters").kotlin_gradle,
     default_action = {},
-    mappings = {}
+    mappings = {},
+    rows = 30,
 }
 
 M.setup = function(opts)
-    for key, default_value in pairs(default_opts) do
-        M[key] = opts[key] or M[key] or default_value
+    for key, value in pairs(default_opts) do
+        M[key] = value
+    end
+    for key, value in pairs(opts) do
+        M[key] = value
     end
 end
 
