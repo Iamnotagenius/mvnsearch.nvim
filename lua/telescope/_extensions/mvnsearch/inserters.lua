@@ -3,7 +3,7 @@ local function gradle_id(package)
 end
 
 local function insert_into_gradle(filename, depstr, opts)
-    vim.cmd("e " .. filename)
+    vim.cmd("e! " .. filename)
     vim.api.nvim_feedkeys(
         vim.api.nvim_replace_termcodes(string.gsub(opts.gradle_macro, "{depstr}", depstr), true, false, true),
         'n', false)

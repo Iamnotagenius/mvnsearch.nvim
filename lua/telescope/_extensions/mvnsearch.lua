@@ -44,7 +44,6 @@ end
 
 local function mvnsearch(opts)
     for key, value in pairs(config) do
-        print(key, value)
         if not opts[key] then
             opts[key] = value
         end
@@ -83,11 +82,16 @@ local function mvnsearch(opts)
                 }
             end
         },
-        attach_mappings = function(prompt_bufnr)
+        attach_mappings = function(prompt_bufnr, map)
             actions.select_default:replace(function()
                 actions.close(prompt_bufnr)
                 opts.default_action(prompt_bufnr)
             end)
+            for mode, mappings in pairs(config.mappings) do
+                for mapping, action in pairs(mappings) do
+                    map(mode, mapping, action)
+                end
+            end
             return true
         end
     }):find()
@@ -111,10 +115,8 @@ return telescope.register_extension {
             mappings = {
                 n = {
                     y = mvnsearch_actions.yank,
-                    i = mvnsearch_actions.insert_to_build_script
                 },
                 i = {
-                    ["<M-i>"] = mvnsearch_actions.insert_to_build_script,
                 }
             }
         }
