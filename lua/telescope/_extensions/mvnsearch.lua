@@ -10,19 +10,8 @@ local function mvnsearch(opts)
     if not opts.query then
         print("Options must have 'query' key")
     end
-
     util.maven_picker(opts, util.new_pager(opts.query, opts.rows)):find()
 end
-
-vim.api.nvim_create_user_command("MvnSearch", function(context)
-    mvnsearch {
-        query = context.fargs[1],
-        action = config.action,
-        gradle_macro = config.gradle_macro,
-        yank_register = config.yank_register,
-        preferred_build_system = config.preferred_build_system
-    }
-end, { nargs = 1 })
 
 return telescope.register_extension {
     setup = function(opts)
