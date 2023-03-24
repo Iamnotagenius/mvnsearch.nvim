@@ -4,12 +4,12 @@ local pickers = require("telescope.pickers")
 local telescope_config = require("telescope.config").values
 local entry_display = require("telescope.pickers.entry_display")
 
-local http_request = require("http.request")
-local http_util = require("http.util")
+local curl = require('plenary.curl')
 local xml2lua = require("xml2lua")
 local xml_handler = require("xmlhandler.tree")
 
 local config = require("telescope._extensions.mvnsearch.config")
+local pagers = require("telescope._extensions.mvnsearch.pagers")
 
 local api_endpoint = "https://search.maven.org/solrsearch/select"
 
@@ -18,19 +18,7 @@ local function file_exists(filepath)
     return f ~= nil and io.close(f)
 end
 
-local function make_query(pager)
-    local url = api_endpoint .. '?' .. http_util.dict_to_query {
-        q = pager.query,
-        rows = tostring(pager.rows),
-        start = tostring(pager:get_start()),
-        wt = "xml"
-    }
-    local headers, stream = assert(http_request.new_from_uri(url):go())
-    local xml = assert(stream:get_body_as_string())
-    if headers:get(":status") ~= "200" then
-        print("Request failed: " .. xml)
-        return
-    end
+local function parse_xml_response(xml)
     local maven_handler = xml_handler:new()
     local maven_parser = xml2lua.parser(maven_handler)
     maven_parser:parse(xml)
@@ -44,8 +32,44 @@ local function make_query(pager)
         package[doc.int._attr.name] = tonumber(doc.int[1])
         table.insert(packages, package)
     end
-    pager.total = maven_handler.root.response.result._attr.numFound
-    return packages
+    return packages, tonumber(maven_handler.root.response.result._attr.numFound)
+end
+
+local function make_query(query, rows, start)
+    start = start or 0
+    local response = curl.get(api_endpoint, {
+        query = {
+            q = query,
+            rows = tostring(rows),
+            start = tostring(start),
+            wt = "xml"
+        },
+    })
+    if response.status ~= 200 then
+        error("Request failed with status " .. response.status .. ": " .. response.body)
+        return
+    end
+    return parse_xml_response(response.body)
+end
+
+local function make_query_async(query, rows, start, callback)
+    start = start or 0
+    curl.get(api_endpoint, {
+        query = {
+            q = query,
+            rows = tostring(rows),
+            start = tostring(start),
+            wt = "xml"
+        },
+        callback = function(response)
+            if response.status ~= 200 then
+                error("Request failed with status " .. response.status .. ": " .. response.body)
+                return
+            end
+            local packages, total = parse_xml_response(response.body)
+            callback(packages, total)
+        end
+    })
 end
 
 local displayer = entry_display.create {
@@ -107,15 +131,11 @@ local function new_pager(query, rows)
     }
 end
 
-local function maven_picker(opts, pager)
-    local response = make_query(pager)
-    if not response then
-        return
-    end
+local function maven_picker(opts, packages, total)
     return pickers.new(opts, {
         results_title = "Maven Central Search",
         sorter = telescope_config.generic_sorter(opts),
-        finder = maven_finder(response),
+        finder = maven_finder(packages),
         attach_mappings = function(prompt_bufnr, map)
             actions.select_default:replace(function()
                 actions.close(prompt_bufnr)
@@ -126,7 +146,7 @@ local function maven_picker(opts, pager)
                     map(mode, mapping, action)
                 end
             end
-            vim.b[prompt_bufnr].pager = pager
+            pagers.new(opts.query, opts.rows, total, prompt_bufnr)
             return true
         end,
     })
@@ -135,6 +155,7 @@ end
 return {
     file_exists = file_exists,
     make_query = make_query,
+    make_query_async = make_query_async,
     new_pager = new_pager,
     maven_picker = maven_picker,
     maven_finder = maven_finder

@@ -3,6 +3,7 @@ local telescope = require("telescope")
 local config = require("telescope._extensions.mvnsearch.config")
 local util = require("telescope._extensions.mvnsearch.util")
 local mvnsearch_actions = require("telescope._extensions.mvnsearch.actions")
+local pagers = require("telescope._extensions.mvnsearch.pagers")
 
 local function mvnsearch(opts)
     opts = vim.tbl_extend("keep", opts, config)
@@ -10,7 +11,10 @@ local function mvnsearch(opts)
     if not opts.query then
         print("Options must have 'query' key")
     end
-    util.maven_picker(opts, util.new_pager(opts.query, opts.rows)):find()
+    local packages, total = util.make_query(opts.query, opts.rows)
+    local picker = util.maven_picker(opts, packages, total)
+    picker:find()
+    print(string.format("Got %d results. (%d pages)", total, pagers.get_from_buffer(picker.prompt_bufnr):max_page() + 1))
 end
 
 return telescope.register_extension {

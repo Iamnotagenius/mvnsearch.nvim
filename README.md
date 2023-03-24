@@ -6,7 +6,7 @@ It uses REST API from [Maven Central Repository](https://central.sonatype.org/se
 ## Dependencies
 - **[Telescope](https://github.com/nvim-telescope/telescope.nvim)** - after all this is just another telescope extension
 - **[xml2lua](https://github.com/manoelcampos/xml2lua)** - for parsing xml response 
-- **[lua-http](https://github.com/daurnimator/lua-http)** - for making request
+- **[plenary.nvim](https://github.com/daurnimator/lua-http)** - specifically `plenary.curl` for making request
 
 ## Installation
 Using [packer.nvim](https://github.com/wbthomason/packer.nvim):
@@ -18,7 +18,7 @@ use {
         {
             'Iamnotagenius/mvnsearch.nvim',
             rocks = {
-                'http', 'xml2lua'
+                'xml2lua'
             }
         }
     },
@@ -87,4 +87,5 @@ telescope.setup {
 
 ## TODO
 - [ ] Maven support
-- [ ] Asynchronous requests
+- [x] Asynchronous requests (but only for mappings as creating a picker requires calling a vimL function which cannot be executed in async context)
+- [ ] Multi-select support

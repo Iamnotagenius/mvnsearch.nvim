@@ -4,6 +4,7 @@ local transform_mod = require("telescope.actions.mt").transform_mod
 local util = require("telescope._extensions.mvnsearch.util")
 local inserters = require("telescope._extensions.mvnsearch.inserters")
 local config = require("telescope._extensions.mvnsearch.config")
+local pagers = require("telescope._extensions.mvnsearch.pagers")
 
 local M = {}
 
@@ -16,13 +17,13 @@ local function detect_build_system()
     return config.preferred_build_system, false
 end
 
-M.yank = function(prompt_bufnr)
+M.yank = function()
     local package = state.get_selected_entry().package
     vim.fn.setreg(config.yank_register, detect_build_system().format(package))
     print("Dependency string yanked to register '" .. config.yank_register .. "'")
 end
 
-M.insert_to_build_script = function(prompt_bufnr)
+M.insert_to_build_script = function()
     local package = state.get_selected_entry().package
     local inserter, found = detect_build_system()
     if not found then
@@ -34,50 +35,44 @@ M.insert_to_build_script = function(prompt_bufnr)
     inserter.insert(package, config)
 end
 
-M.next_page = function(prompt_bufnr)
+local function switch_page(prompt_bufnr, switcher)
     local picker = state.get_current_picker(prompt_bufnr)
-    local pager = vim.b[prompt_bufnr].pager
-    pager:next()
-    local response = util.make_query(pager)
-    if not response then
-        print("Request failed")
-        return
-    end
-    vim.b[prompt_bufnr].pager = pager
-    print("Page", pager.page + 1, "of", pager:max_page() + 1)
-    picker:refresh(util.maven_finder(response))
+    local pager = pagers.get_from_buffer(prompt_bufnr)
+    switcher(pager)
+    util.make_query_async(pager.query, pager.rows, pager:get_start(), function(packages)
+        print("Page", pager.page + 1, "of", pager:max_page() + 1, "pager:", pager)
+        picker:refresh(util.maven_finder(packages))
+    end)
+end
+
+M.next_page = function(prompt_bufnr)
+    switch_page(prompt_bufnr, function(pager)
+        pager:next()
+    end)
 end
 
 M.prev_page = function(prompt_bufnr)
-    local picker = state.get_current_picker(prompt_bufnr)
-    local pager = vim.b[prompt_bufnr].pager
-    pager:prev()
-    local response = util.make_query(pager)
-    if not response then
-        print("Request failed")
-        return
-    end
-    vim.b[prompt_bufnr].pager = pager
-    print("Page", pager.page + 1, "of", pager:max_page() + 1)
-    picker:refresh(util.maven_finder(response))
+    switch_page(prompt_bufnr, function(pager)
+        pager:prev()
+    end)
 end
 
 M.new_query = function(prompt_bufnr)
     local picker = state.get_current_picker(prompt_bufnr)
-    local pager = vim.b[prompt_bufnr].pager
+    local pager = pagers.get_from_buffer(prompt_bufnr)
     if picker:_get_prompt() == "" then
         return
     end
     pager.query = picker:_get_prompt()
     pager.page = 0
-    local response = util.make_query(pager)
-    if not response then
-        print("Request failed")
-        return
-    end
-    vim.b[prompt_bufnr].pager = pager
-    print(string.format("Search query changed to %s. Got %d results", pager.query, pager.total))
-    picker:refresh(util.maven_finder(response), {})
+    util.make_query_async(pager.query, pager.rows, pager:get_start(), function(packages, total)
+        pager.total = total
+        print(string.format("Search query changed to %s. Got %d results (%d pages).",
+            pager.query,
+            pager.total,
+            pager:max_page() + 1))
+        picker:refresh(util.maven_finder(packages))
+    end)
 end
 
 return transform_mod(M)
