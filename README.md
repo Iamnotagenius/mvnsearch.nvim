@@ -60,7 +60,8 @@ telescope.setup {
     extensions = {
         -- ...
         mvnsearch = {
-            gradle_macro = '/dependencies<CR>$%O{depstr}<Esc>==:w<CR>', -- Macro for pasting dependecy string in build.gradle(.kts); {depstr} is replaced with dependecy string
+            -- Macro for pasting dependecy string in build.gradle(.kts); {depstr} is replaced with dependecy string
+            gradle_macro = '/dependencies<CR>$%O{depstr}<Esc>==:w<CR>',
             yank_register = 'd', -- Register for dependecy string to yank to
             preferred_build_system = mvnsearch.inserters.kotlin_gradle, -- Fallback format of dependecy string
             default_action = mvnsearch.actions.insert_to_build_script, -- Action on select_default
