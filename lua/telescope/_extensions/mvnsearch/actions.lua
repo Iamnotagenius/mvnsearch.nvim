@@ -40,7 +40,7 @@ local function switch_page(prompt_bufnr, switcher)
     local pager = pagers.get_from_buffer(prompt_bufnr)
     switcher(pager)
     util.make_query_async(pager.query, pager.rows, pager:get_start(), function(packages)
-        print("Page", pager.page + 1, "of", pager:max_page() + 1, "pager:", pager)
+        print("Page", pager.page + 1, "of", pager:max_page() + 1)
         picker:refresh(util.maven_finder(packages))
     end)
 end
