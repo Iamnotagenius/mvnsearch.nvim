@@ -7,6 +7,10 @@ local default_opts = {
     default_action = {},
     mappings = {},
     rows = 30,
+    xml_declaration = {
+        version = "1.0",
+        encoding = "UTF-8"
+    }
 }
 
 M.setup = function(opts)

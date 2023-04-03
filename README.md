@@ -5,7 +5,7 @@ It uses REST API from [Maven Central Repository](https://central.sonatype.org/se
 
 ## Dependencies
 - **[Telescope](https://github.com/nvim-telescope/telescope.nvim)** - after all this is just another telescope extension
-- **[xml2lua](https://github.com/manoelcampos/xml2lua)** - for parsing xml response 
+- **[xml2lua](https://github.com/manoelcampos/xml2lua)** - for parsing xml response and working with `pom.xml`
 - **[plenary.nvim](https://github.com/daurnimator/lua-http)** - specifically `plenary.curl` for making request
 
 ## Installation
@@ -18,7 +18,9 @@ use {
         {
             'Iamnotagenius/mvnsearch.nvim',
             rocks = {
-                'xml2lua'
+                -- It is important to specify this version since the latest version of xml2lua on luarocks
+                -- has some bugs, see https://github.com/manoelcampos/xml2lua/issues/87
+                'xml2lua 1.5-1'
             }
         }
     },
@@ -38,11 +40,11 @@ You can:
  - search through packages
  - make new queries from prompt
  - yank dependecy strings...
- - ...or insert them directly to `gradle.build(.kts)`
+ - ...or insert them directly to `gradle.build(.kts)` or `pom.xml`
 
 Insertion works like this:
 1. mvnsearch searches for build script in vim's cwd and determines how to format a package.
-2. Inserts formatted package to build script (currently using macro).
+2. Inserts formatted package to build script (currently using macro for gradle).
 3. If it does not find any build script, it fallbacks to yanking.
 
 All mappings are described in [Configuration](#configuration)
@@ -81,12 +83,21 @@ telescope.setup {
                 }
             }
             rows = 30, -- Items per page
+            -- Determines declaration string (<?xml ...?>) in pom.xml. It can be either:
+            -- a function - called without arguments and it should return declaration string (it replaces ...)
+            -- a string - simply replaces ...
+            -- a table - inserts key="value" for each entry in table to declaration string
+            xml_declaration = {
+                version = "1.0",
+                encoding = "UTF-8"
+            }
         }
     }
 }
 ```
 
 ## TODO
-- [ ] Maven support
+- [x] Maven support
 - [x] Asynchronous requests (but only for mappings as creating a picker requires calling a vimL function which cannot be executed in async context)
 - [ ] Multi-select support
+- [ ] Multiple project files

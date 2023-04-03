@@ -1,3 +1,6 @@
+local xml2lua = require("xml2lua")
+local handler = require("xmlhandler.tree")
+
 local function gradle_id(package)
     return package.id .. ':' .. package.latestVersion
 end
@@ -25,8 +28,45 @@ local function gradle_groovy_dsl(package, opts)
     insert_into_gradle("build.gradle", format_groovy_dsl(package), opts)
 end
 
--- TODO: Maven support
+local function format_maven(package)
+    return xml2lua.toXml({
+        groupId = package.g,
+        artifactId = package.a,
+        version = package.latestVersion
+    }, "dependency")
+end
 
+local function maven(package, opts)
+    local mvnhandler = handler:new()
+    xml2lua.parser(mvnhandler):parse(xml2lua.loadFile("pom.xml"))
+    local project = mvnhandler.root.project
+    if not project.dependencies or not project.dependencies.dependency then
+        project.dependencies = { dependency = {} }
+    end
+    table.insert(project.dependencies.dependency, {
+        groupId = package.g,
+        artifactId = package.a,
+        version = package.latestVersion
+    })
+    local decl_str = "<?xml"
+    if type(opts.xml_declaration) == "function" then
+        decl_str = decl_str .. opts.xml_declaration()
+    elseif type(opts.xml_declaration) == "table" then
+        for key, value in pairs(opts.xml_declaration) do
+            decl_str = decl_str .. ' ' .. key .. '="' .. value .. '"'
+        end
+    elseif type(opts.xml_declaration) == "string" then
+        decl_str = decl_str .. opts.xml_declaration
+    end
+    decl_str = decl_str .. "?>"
+
+    local pom = io.open("pom.xml", "w")
+    if not pom then
+        error("Cannot open pom.xml")
+    end
+    pom:write(decl_str .. '\n' .. xml2lua.toXml(mvnhandler.root))
+    pom:close()
+end
 
 return {
     groovy_gradle = {
@@ -38,5 +78,10 @@ return {
         script_path = "build.gradle.kts",
         insert = gradle_kotlin_dsl,
         format = format_kotlin_dsl
+    },
+    maven = {
+        script_path = "pom.xml",
+        insert = maven,
+        format = format_maven
     }
 }
