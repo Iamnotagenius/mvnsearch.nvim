@@ -50,10 +50,17 @@ local function maven(package, filename, opts)
     })
     local decl_str = "<?xml"
     if type(opts.xml_declaration) == "function" then
-        decl_str = decl_str .. opts.xml_declaration()
+        local result = opts.xml_declaration(filename)
+        if type(result) == "string" then
+            decl_str = decl_str .. result
+        elseif type(result) == "table" then
+            for key, value in pairs(opts.xml_declaration) do
+                decl_str = decl_str .. ' ' .. string.format('%s="%s"', key, value)
+            end
+        end
     elseif type(opts.xml_declaration) == "table" then
         for key, value in pairs(opts.xml_declaration) do
-            decl_str = decl_str .. ' ' .. key .. '="' .. value .. '"'
+            decl_str = decl_str .. ' ' .. string.format('%s="%s"', key, value)
         end
     elseif type(opts.xml_declaration) == "string" then
         decl_str = decl_str .. opts.xml_declaration

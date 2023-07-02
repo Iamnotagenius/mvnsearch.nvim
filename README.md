@@ -7,6 +7,7 @@ It uses REST API from [Maven Central Repository](https://central.sonatype.org/se
 - **[Telescope](https://github.com/nvim-telescope/telescope.nvim)** - after all this is just another telescope extension
 - **[xml2lua](https://github.com/manoelcampos/xml2lua)** - for parsing xml response and working with `pom.xml`
 - **[plenary.nvim](https://github.com/daurnimator/lua-http)** - specifically `plenary.curl` for making request
+- **find, [fd](https://github.com/sharkdp/fd) or [ripgrep](https://github.com/BurntSushi/ripgrep)** - for finding build scripts
 
 ## Installation
 Using [packer.nvim](https://github.com/wbthomason/packer.nvim):
@@ -85,9 +86,9 @@ telescope.setup {
             }
             rows = 30, -- Items per page
             -- Determines declaration string (<?xml ...?>) in pom.xml. It can be either:
-            -- a function - called without arguments and it should return declaration string (it replaces ...)
             -- a string - simply replaces ...
             -- a table - inserts key="value" for each entry in table to declaration string
+            -- a function - called with a filename argument, should return declaration string or table
             xml_declaration = {
                 version = "1.0",
                 encoding = "UTF-8"
