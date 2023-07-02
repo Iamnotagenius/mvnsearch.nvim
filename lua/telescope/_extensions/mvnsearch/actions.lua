@@ -1,3 +1,4 @@
+local actions = require("telescope.actions")
 local state = require("telescope.actions.state")
 local transform_mod = require("telescope.actions.mt").transform_mod
 
@@ -9,12 +10,12 @@ local pagers = require("telescope._extensions.mvnsearch.pagers")
 local M = {}
 
 local function detect_build_system()
-    for _, inserter in pairs(inserters) do
-        if util.file_exists(inserter.script_path) then
-            return inserter, true
+    for filename, inserter in pairs(inserters) do
+        if util.file_exists(filename) then
+            return inserter, filename
         end
     end
-    return config.preferred_build_system, false
+    return config.preferred_build_system
 end
 
 M.yank = function()
@@ -23,16 +24,21 @@ M.yank = function()
     print("Dependency string yanked to register '" .. config.yank_register .. "'")
 end
 
-M.insert_to_build_script = function()
+M.insert_to_build_script = function(prompt_bufnr, opts)
     local package = state.get_selected_entry().package
-    local inserter, found = detect_build_system()
-    if not found then
+    local picker = util.build_script_picker(opts, package)
+    if picker then
+        picker:find()
+        return
+    end
+    local inserter, filename = detect_build_system()
+    if not filename then
         print("Build script not found, fallback to yank")
         vim.fn.setreg(config.yank_register, inserter.format(package))
         return
     end
 
-    inserter.insert(package, config)
+    inserter.insert(package, filename, config)
 end
 
 local function switch_page(prompt_bufnr, switcher)

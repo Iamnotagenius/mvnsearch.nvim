@@ -21,6 +21,7 @@ return telescope.register_extension {
     setup = function(opts)
         local default_actions = {
             default_action = mvnsearch_actions.insert_to_build_script,
+            find_command = util.default_find_command,
             mappings = {
                 n = {
                     y = mvnsearch_actions.yank,
@@ -43,6 +44,9 @@ return telescope.register_extension {
     exports = {
         mvnsearch = mvnsearch,
         actions = mvnsearch_actions,
-        inserters = require("telescope._extensions.mvnsearch.inserters")
+        inserters = require("telescope._extensions.mvnsearch.inserters"),
+        defaults = {
+            find_command = util.default_find_command
+        }
     }
 }

@@ -16,16 +16,16 @@ local function format_kotlin_dsl(package)
     return 'implementation("' .. gradle_id(package) .. '")'
 end
 
-local function gradle_kotlin_dsl(package, opts)
-    insert_into_gradle("build.gradle.kts", format_kotlin_dsl(package), opts)
+local function gradle_kotlin_dsl(package, filename, opts)
+    insert_into_gradle(filename, format_kotlin_dsl(package), opts)
 end
 
 local function format_groovy_dsl(package)
     return "implementation '" .. gradle_id(package) .. "'"
 end
 
-local function gradle_groovy_dsl(package, opts)
-    insert_into_gradle("build.gradle", format_groovy_dsl(package), opts)
+local function gradle_groovy_dsl(package, filename, opts)
+    insert_into_gradle(filename, format_groovy_dsl(package), opts)
 end
 
 local function format_maven(package)
@@ -36,9 +36,9 @@ local function format_maven(package)
     }, "dependency")
 end
 
-local function maven(package, opts)
+local function maven(package, filename, opts)
     local mvnhandler = handler:new()
-    xml2lua.parser(mvnhandler):parse(xml2lua.loadFile("pom.xml"))
+    xml2lua.parser(mvnhandler):parse(xml2lua.loadFile(filename))
     local project = mvnhandler.root.project
     if not project.dependencies or not project.dependencies.dependency then
         project.dependencies = { dependency = {} }
@@ -60,27 +60,24 @@ local function maven(package, opts)
     end
     decl_str = decl_str .. "?>"
 
-    local pom = io.open("pom.xml", "w")
+    local pom = io.open(filename, "w")
     if not pom then
-        error("Cannot open pom.xml")
+        error("Cannot open " .. filename)
     end
     pom:write(decl_str .. '\n' .. xml2lua.toXml(mvnhandler.root))
     pom:close()
 end
 
 return {
-    groovy_gradle = {
-        script_path = "build.gradle",
+    ["build.gradle"] = {
         insert = gradle_groovy_dsl,
         format = format_groovy_dsl
     },
-    kotlin_gradle = {
-        script_path = "build.gradle.kts",
+     ["build.gradle.kts"] = {
         insert = gradle_kotlin_dsl,
         format = format_kotlin_dsl
     },
-    maven = {
-        script_path = "pom.xml",
+    ["pom.xml"] = {
         insert = maven,
         format = format_maven
     }

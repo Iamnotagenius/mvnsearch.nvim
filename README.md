@@ -67,6 +67,7 @@ telescope.setup {
             yank_register = 'd', -- Register for dependecy string to yank to
             preferred_build_system = mvnsearch.inserters.kotlin_gradle, -- Fallback format of dependecy string
             default_action = mvnsearch.actions.insert_to_build_script, -- Action on select_default
+            find_command = mvnsearch.defaults.find_command, -- find command used to find build scripts
             mappings = {
                 n = {
                     y = mvnsearch.actions.yank,
@@ -99,5 +100,6 @@ telescope.setup {
 ## TODO
 - [x] Maven support
 - [x] Asynchronous requests (but only for mappings as creating a picker requires calling a vimL function which cannot be executed in async context)
+- [x] Multiple project files
+- [ ] Version selection
 - [ ] Multi-select support
-- [ ] Multiple project files

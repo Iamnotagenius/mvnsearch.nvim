@@ -1,7 +1,9 @@
 local actions = require("telescope.actions")
+local state = require("telescope.actions.state")
 local finders = require("telescope.finders")
 local pickers = require("telescope.pickers")
 local telescope_config = require("telescope.config").values
+local telescope_utils = require("telescope.utils")
 local entry_display = require("telescope.pickers.entry_display")
 
 local curl = require('plenary.curl')
@@ -10,6 +12,7 @@ local xml_handler = require("xmlhandler.tree")
 
 local config = require("telescope._extensions.mvnsearch.config")
 local pagers = require("telescope._extensions.mvnsearch.pagers")
+local inserters = require("telescope._extensions.mvnsearch.inserters")
 
 local api_endpoint = "https://search.maven.org/solrsearch/select"
 
@@ -72,17 +75,17 @@ local function make_query_async(query, rows, start, callback)
     })
 end
 
-local displayer = entry_display.create {
-    separator = " ",
-    items = {
-        { width = 48 },
-        { width = 36 },
-        { width = 20 },
-        { remaining = true }
-    }
-}
 
 local function maven_finder(packages)
+    local displayer = entry_display.create {
+        separator = " ",
+        items = {
+            { width = 48 },
+            { width = 36 },
+            { width = 20 },
+            { remaining = true }
+        }
+    }
     return finders.new_table {
         results = packages,
         entry_maker = function(package)
@@ -102,35 +105,6 @@ local function maven_finder(packages)
     }
 end
 
-local function new_pager(query, rows)
-    return {
-        query = query,
-        rows = rows,
-        page = 0,
-        total = 0,
-        get_start = function(self)
-            return self.page * self.rows
-        end,
-        next = function(self)
-            if self.page == self:max_page() then
-                self.page = 0
-                return
-            end
-            self.page = self.page + 1
-        end,
-        prev = function(self)
-            if self.page == 0 then
-                self.page = self:max_page()
-                return
-            end
-            self.page = self.page - 1
-        end,
-        max_page = function(self)
-            return math.ceil(self.total / self.rows) - 1
-        end,
-    }
-end
-
 local function maven_picker(opts, packages, total)
     return pickers.new(opts, {
         results_title = "Maven Central Search",
@@ -139,7 +113,7 @@ local function maven_picker(opts, packages, total)
         attach_mappings = function(prompt_bufnr, map)
             actions.select_default:replace(function()
                 actions.close(prompt_bufnr)
-                config.default_action(prompt_bufnr)
+                config.default_action(prompt_bufnr, opts)
             end)
             for mode, mappings in pairs(config.mappings) do
                 for mapping, action in pairs(mappings) do
@@ -152,11 +126,83 @@ local function maven_picker(opts, packages, total)
     })
 end
 
+local function default_find_command()
+    local cmd = nil
+    if 1 == vim.fn.executable "rg" then
+        cmd = { "rg", "--files", "--color", "never" }
+        for filename, _ in pairs(inserters) do
+            cmd[#cmd + 1] = "-g"
+            cmd[#cmd + 1] = filename
+        end
+    elseif 1 == vim.fn.executable "fd" then
+        cmd = {
+            "fd",
+            "--type",
+            "f",
+            "--color",
+            "never",
+            table.concat(vim.tbl_keys(inserters), "|")
+        }
+    elseif 1 == vim.fn.executable "find" and vim.fn.has "win32" == 0 then
+        cmd = { "find", ".", "-type", "f", "-and", "(" }
+        for filename, _ in pairs(inserters) do
+            cmd[#cmd + 1] = "-name"
+            cmd[#cmd + 1] = filename
+            cmd[#cmd + 1] = "-or"
+        end
+        cmd[#cmd] = ")"
+    end
+    return cmd
+end
+
+local function build_script_picker(opts, package)
+    local find_command = (function()
+        if opts.find_command then
+            if type(opts.find_command) == "function" then
+                return opts.find_command(opts)
+            end
+            return opts.find_command
+        end
+    end)()
+
+    if not find_command then
+        telescope_utils.notify("mvnsearch.find_build_script", {
+            msg = "You need to install either find, fd, rg or specify your own find command.",
+            level = "ERROR",
+        })
+        return
+    end
+
+    return pickers.new(opts, {
+        results_title = "Choose build script to insert to",
+        sorter = telescope_config.file_sorter(opts),
+        finder = finders.new_oneshot_job(find_command, opts),
+        previewer = telescope_config.file_previewer(opts),
+        attach_mappings = function (prompt_bufnr, map)
+            actions.select_default:replace(function ()
+                actions.close(prompt_bufnr)
+
+                local filename = state.get_selected_entry()[1]
+                local inserter = inserters[vim.fs.basename(filename)]
+                if not inserter then
+                    telescope_utils.notify("mvnsearch.insert_package", {
+                        msg = "Inserter not found for " .. filename,
+                        level = "ERROR",
+                    })
+                end
+                inserter.insert(package, filename, opts)
+            end)
+            return true
+        end
+    })
+end
+
 return {
     file_exists = file_exists,
     make_query = make_query,
     make_query_async = make_query_async,
-    new_pager = new_pager,
     maven_picker = maven_picker,
-    maven_finder = maven_finder
+    maven_finder = maven_finder,
+    default_find_command = default_find_command,
+    build_script_picker = build_script_picker
 }
