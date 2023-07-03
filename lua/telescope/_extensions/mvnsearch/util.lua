@@ -250,15 +250,22 @@ local function build_script_picker(opts, packages)
         attach_mappings = function (prompt_bufnr, map)
             actions.select_default:replace(function ()
                 actions.close(prompt_bufnr)
-                local filename = state.get_selected_entry()[1]
-                local inserter = inserters[vim.fs.basename(filename)]
-                if not inserter then
-                    telescope_utils.notify("mvnsearch.insert_package", {
-                        msg = "Inserter not found for " .. filename,
-                        level = "ERROR",
-                    })
+                local picker = state.get_current_picker(prompt_bufnr)
+                local selection = picker:get_multi_selection()
+                if #selection == 0 then
+                    selection = { picker:get_selection() }
                 end
-                inserter.insert(packages, filename, opts)
+                for _, entry in ipairs(selection) do
+                    local filename = entry()[1]
+                    local inserter = inserters[vim.fs.basename(filename)]
+                    if not inserter then
+                        telescope_utils.notify("mvnsearch.insert_package", {
+                            msg = "Inserter not found for " .. filename,
+                            level = "ERROR",
+                        })
+                    end
+                    inserter.insert(packages, filename, opts)
+                end
             end)
             return true
         end
