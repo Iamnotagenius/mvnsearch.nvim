@@ -1,4 +1,4 @@
-local actions = require("telescope.actions")
+local action_utils = require("telescope.actions.utils")
 local state = require("telescope.actions.state")
 local transform_mod = require("telescope.actions.mt").transform_mod
 
@@ -17,28 +17,48 @@ local function detect_build_system()
     end
     return config.preferred_build_system
 end
-
-M.yank = function()
-    local package = state.get_selected_entry().package
+M.yank = function(prompt_bufnr)
+    local picker = state.get_current_picker(prompt_bufnr)
+    local selection = picker:get_multi_selection()
+    if #selection > 0 then
+        local deps = table.concat(vim.tbl_map(function (entry)
+            return detect_build_system().format(entry.package)
+        end, selection), '\n')
+        vim.fn.setreg(config.yank_register, deps)
+        print("Dependencies yanked to register '" .. config.yank_register .. "'")
+        return
+    end
+    local package = picker:get_selection().package
     vim.fn.setreg(config.yank_register, detect_build_system().format(package))
     print("Dependency string yanked to register '" .. config.yank_register .. "'")
 end
 
 M.insert_to_build_script = function(prompt_bufnr, opts)
-    local package = state.get_selected_entry().package
-    local picker = util.build_script_picker(opts, package)
-    if picker then
-        picker:find()
+    local picker = state.get_current_picker(prompt_bufnr)
+    local pager = pagers.get_from_buffer(prompt_bufnr)
+    local packages = (function ()
+        local selection = vim.tbl_values(pager.chosen)
+        if #selection > 0 then
+            return vim.tbl_values(selection)
+        end
+        return { picker:get_selection().package }
+    end)()
+    local file_picker = util.build_script_picker(opts, packages)
+    if file_picker then
+        file_picker:find()
         return
     end
     local inserter, filename = detect_build_system()
     if not filename then
         print("Build script not found, fallback to yank")
-        vim.fn.setreg(config.yank_register, inserter.format(package))
+        local deps = table.concat(vim.tbl_map(function (package)
+            return detect_build_system().format(package)
+        end, packages), '\n')
+        vim.fn.setreg(config.yank_register, deps)
         return
     end
 
-    inserter.insert(package, filename, config)
+    inserter.insert(packages, filename, config)
 end
 
 local function switch_page(prompt_bufnr, switcher)

@@ -7,7 +7,7 @@ It uses REST API from [Maven Central Repository](https://central.sonatype.org/se
 - **[Telescope](https://github.com/nvim-telescope/telescope.nvim)** - after all this is just another telescope extension
 - **[xml2lua](https://github.com/manoelcampos/xml2lua)** - for parsing xml response and working with `pom.xml`
 - **[plenary.nvim](https://github.com/daurnimator/lua-http)** - specifically `plenary.curl` for making request
-- **find, [fd](https://github.com/sharkdp/fd) or [ripgrep](https://github.com/BurntSushi/ripgrep)** - for finding build scripts
+- **find, [fd](https://github.com/sharkdp/fd) or [ripgrep](https://github.com/BurntSushi/ripgrep)** - for finding build scripts [Optional]
 
 ## Installation
 Using [packer.nvim](https://github.com/wbthomason/packer.nvim):
@@ -42,6 +42,7 @@ You can:
  - make new queries from prompt
  - yank dependecy strings...
  - ...or insert them directly to `gradle.build(.kts)` or `pom.xml`
+ - multi-select that persists through pages and queries
 
 Insertion works like this:
 1. mvnsearch searches for build script in vim's cwd and determines how to format a package.
@@ -103,4 +104,4 @@ telescope.setup {
 - [x] Asynchronous requests (but only for mappings as creating a picker requires calling a vimL function which cannot be executed in async context)
 - [x] Multiple project files
 - [ ] Version selection
-- [ ] Multi-select support
+- [x] Multi-select support

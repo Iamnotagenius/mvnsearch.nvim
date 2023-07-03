@@ -1,4 +1,5 @@
 local actions = require("telescope.actions")
+local action_utils = require("telescope.actions.utils")
 local state = require("telescope.actions.state")
 local finders = require("telescope.finders")
 local pickers = require("telescope.pickers")
@@ -112,8 +113,76 @@ local function maven_picker(opts, packages, total)
         finder = maven_finder(packages),
         attach_mappings = function(prompt_bufnr, map)
             actions.select_default:replace(function()
-                actions.close(prompt_bufnr)
                 config.default_action(prompt_bufnr, opts)
+            end)
+            actions.toggle_selection:replace(function ()
+                local current_picker = state.get_current_picker(prompt_bufnr)
+                local pager = pagers.get_from_buffer(prompt_bufnr)
+                local chosen = pager.chosen
+                local entry = current_picker:get_selection()
+                if current_picker:is_multi_selected(entry) then
+                    chosen[entry.ordinal] = nil
+                else
+                    chosen[entry.ordinal] = entry.package
+                end
+                pager.chosen = chosen
+                current_picker:toggle_selection(current_picker:get_selection_row())
+            end)
+            actions.add_selection:replace(function ()
+                local current_picker = state.get_current_picker(prompt_bufnr)
+                local pager = pagers.get_from_buffer(prompt_bufnr)
+                local chosen = pager.chosen
+                local entry = current_picker:get_selection()
+                chosen[entry.ordinal] = entry.package
+                pager.chosen = chosen
+                current_picker:add_selection(current_picker:get_selection_row())
+            end)
+            actions.remove_selection:replace(function ()
+                local current_picker = state.get_current_picker(prompt_bufnr)
+                local pager = pagers.get_from_buffer(prompt_bufnr)
+                local chosen = pager.chosen
+                local entry = current_picker:get_selection()
+                chosen[entry.ordinal] = nil
+                pager.chosen = chosen
+                current_picker:remove_selection(current_picker:get_selection_row())
+            end)
+            actions.select_all:replace(function ()
+                action_utils.map_entries(prompt_bufnr, function (entry, _, row)
+                    local current_picker = state.get_current_picker(prompt_bufnr)
+                    local pager = pagers.get_from_buffer(prompt_bufnr)
+                    local chosen = pager.chosen
+                    if not current_picker:is_multi_selected(row) then
+                        chosen[entry.ordinal] = entry.package
+                    end
+                    pager.chosen = chosen
+                end)
+                actions.select_all(prompt_bufnr)
+            end)
+            actions.drop_all:replace(function ()
+                action_utils.map_entries(prompt_bufnr, function (entry, _, row)
+                    local current_picker = state.get_current_picker(prompt_bufnr)
+                    local pager = pagers.get_from_buffer(prompt_bufnr)
+                    local chosen = pager.chosen
+                    if current_picker:is_multi_selected(row) then
+                        chosen[entry.ordinal] = nil
+                    end
+                    pager.chosen = chosen
+                end)
+                actions.drop_all(prompt_bufnr)
+            end)
+            actions.toggle_all:replace(function ()
+                action_utils.map_entries(prompt_bufnr, function (entry, _, row)
+                    local current_picker = state.get_current_picker(prompt_bufnr)
+                    local pager = pagers.get_from_buffer(prompt_bufnr)
+                    local chosen = pager.chosen
+                    if current_picker:is_multi_selected(row) then
+                        chosen[entry.ordinal] = nil
+                    else
+                        chosen[entry.ordinal] = entry.package
+                    end
+                    pager.chosen = chosen
+                end)
+                actions.drop_all(prompt_bufnr)
             end)
             for mode, mappings in pairs(config.mappings) do
                 for mapping, action in pairs(mappings) do
@@ -155,7 +224,7 @@ local function default_find_command()
     return cmd
 end
 
-local function build_script_picker(opts, package)
+local function build_script_picker(opts, packages)
     local find_command = (function()
         if opts.find_command then
             if type(opts.find_command) == "function" then
@@ -181,7 +250,6 @@ local function build_script_picker(opts, package)
         attach_mappings = function (prompt_bufnr, map)
             actions.select_default:replace(function ()
                 actions.close(prompt_bufnr)
-
                 local filename = state.get_selected_entry()[1]
                 local inserter = inserters[vim.fs.basename(filename)]
                 if not inserter then
@@ -190,7 +258,7 @@ local function build_script_picker(opts, package)
                         level = "ERROR",
                     })
                 end
-                inserter.insert(package, filename, opts)
+                inserter.insert(packages, filename, opts)
             end)
             return true
         end

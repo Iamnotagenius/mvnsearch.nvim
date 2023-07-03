@@ -45,6 +45,7 @@ function M.new(query, rows, total, prompt_bufnr)
         rows = rows,
         page = 0,
         total = total,
+        chosen = {}
     }
     local pager = {
         prompt_bufnr = prompt_bufnr

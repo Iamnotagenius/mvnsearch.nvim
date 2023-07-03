@@ -5,7 +5,11 @@ local function gradle_id(package)
     return package.id .. ':' .. package.latestVersion
 end
 
-local function insert_into_gradle(filename, depstr, opts)
+local function insert_into_gradle(filename, packages, format, opts)
+    local depstr = table.concat(vim.tbl_map(function (package)
+        return format(package)
+    end, packages), "<CR>")
+
     vim.cmd("e! " .. filename)
     vim.api.nvim_feedkeys(
         vim.api.nvim_replace_termcodes(string.gsub(opts.gradle_macro, "{depstr}", depstr), true, false, true),
@@ -16,16 +20,16 @@ local function format_kotlin_dsl(package)
     return 'implementation("' .. gradle_id(package) .. '")'
 end
 
-local function gradle_kotlin_dsl(package, filename, opts)
-    insert_into_gradle(filename, format_kotlin_dsl(package), opts)
+local function gradle_kotlin_dsl(packages, filename, opts)
+    insert_into_gradle(filename, packages, format_kotlin_dsl, opts)
 end
 
 local function format_groovy_dsl(package)
     return "implementation '" .. gradle_id(package) .. "'"
 end
 
-local function gradle_groovy_dsl(package, filename, opts)
-    insert_into_gradle(filename, format_groovy_dsl(package), opts)
+local function gradle_groovy_dsl(packages, filename, opts)
+    insert_into_gradle(filename, packages, format_groovy_dsl, opts)
 end
 
 local function format_maven(package)
@@ -36,18 +40,20 @@ local function format_maven(package)
     }, "dependency")
 end
 
-local function maven(package, filename, opts)
+local function maven(packages, filename, opts)
     local mvnhandler = handler:new()
     xml2lua.parser(mvnhandler):parse(xml2lua.loadFile(filename))
     local project = mvnhandler.root.project
     if not project.dependencies or not project.dependencies.dependency then
         project.dependencies = { dependency = {} }
     end
-    table.insert(project.dependencies.dependency, {
-        groupId = package.g,
-        artifactId = package.a,
-        version = package.latestVersion
-    })
+    for _, package in ipairs(packages) do
+        table.insert(project.dependencies.dependency, {
+            groupId = package.g,
+            artifactId = package.a,
+            version = package.latestVersion
+        })
+    end
     local decl_str = "<?xml"
     if type(opts.xml_declaration) == "function" then
         local result = opts.xml_declaration(filename)
