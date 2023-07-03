@@ -27,6 +27,10 @@ local function parse_xml_response(xml)
     local maven_parser = xml2lua.parser(maven_handler)
     maven_parser:parse(xml)
     local packages = {}
+    local total = tonumber(maven_handler.root.response.result._attr.numFound)
+    if total == 0 then
+        return {}, total
+    end
     for _, doc in pairs(maven_handler.root.response.result.doc) do
         local package = {}
         for _, str in pairs(doc.str) do
@@ -36,7 +40,7 @@ local function parse_xml_response(xml)
         package[doc.int._attr.name] = tonumber(doc.int[1])
         table.insert(packages, package)
     end
-    return packages, tonumber(maven_handler.root.response.result._attr.numFound)
+    return packages, total
 end
 
 local function make_query(query, rows, start)
@@ -70,8 +74,7 @@ local function make_query_async(query, rows, start, callback)
                 error("Request failed with status " .. response.status .. ": " .. response.body)
                 return
             end
-            local packages, total = parse_xml_response(response.body)
-            callback(packages, total)
+            callback(parse_xml_response(response.body))
         end
     })
 end

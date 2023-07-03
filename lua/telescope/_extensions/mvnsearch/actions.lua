@@ -92,6 +92,10 @@ M.new_query = function(prompt_bufnr)
     pager.query = picker:_get_prompt()
     pager.page = 0
     util.make_query_async(pager.query, pager.rows, pager:get_start(), function(packages, total)
+        if total == 0 then
+            print("No results")
+            return
+        end
         pager.total = total
         print(string.format("Search query changed to %s. Got %d results (%d pages).",
             pager.query,
